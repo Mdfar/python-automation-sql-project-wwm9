@@ -1,0 +1,5 @@
+-- 1. Create Telemetry Table CREATE TABLE raw_telemetry ( id SERIAL PRIMARY KEY, equipment_id VARCHAR(50), power_draw FLOAT, vibration FLOAT, status VARCHAR(20), timestamp TIMESTAMP );
+
+-- 2. Uptime/Downtime Logic View -- Uses LAG() to find the duration between state changes CREATE VIEW equipment_performance AS WITH state_changes AS ( SELECT equipment_id, status, timestamp, LAG(timestamp) OVER (PARTITION BY equipment_id ORDER BY timestamp) as prev_ts, LAG(status) OVER (PARTITION BY equipment_id ORDER BY timestamp) as prev_status FROM raw_telemetry ) SELECT equipment_id, prev_status as state, prev_ts as start_time, timestamp as end_time, EXTRACT(EPOCH FROM (timestamp - prev_ts)) / 60 as duration_minutes FROM state_changes WHERE prev_status IS NOT NULL;
+
+-- 3. Efficiency Insights Query SELECT equipment_id, state, SUM(duration_minutes) as total_time, COUNT(*) as incident_count FROM equipment_performance GROUP BY 1, 2;
